@@ -4,12 +4,34 @@ channels:
 dependencies:
   - python=3.10
   - pip
-  - opencv
+
+  # Data / Math (conda 比 pip 穩)
   - numpy
+  - scipy
+  - pandas
+  - matplotlib
+
+  # Computer Vision (一定用 conda)
+  - opencv
+
+  # PyTorch（CPU 版；如果你有 GPU 再換）
+  - pytorch
+  - torchvision
+
   - pip:
+      # Web / App
       - fastapi
       - uvicorn
       - streamlit
+      - python-multipart
+      - pydantic
+      - pydantic-settings
+
+      # AI / Utils
       - ultralytics
-      - requests
       - huggingface_hub
+      - requests
+      - python-dotenv
+      - pillow
+      - pyyaml
+      - watchfiles
