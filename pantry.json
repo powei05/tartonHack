@@ -1,0 +1,24 @@
+[
+    {
+        "id": "fbb81c53-05e7-4b9e-afdf-ac2711b562b6",
+        "barcode": "5449000000996",
+        "name": "Coke Original Taste",
+        "image": "https://images.openfoodfacts.org/images/products/544/900/000/0996/front_en.1002.200.jpg",
+        "category": "\u98f2\u6599 \ud83e\udd64",
+        "added_at": "2026-02-06",
+        "expire_at": "2026-02-13",
+        "status": "in_fridge",
+        "consumed_at": null
+    },
+    {
+        "id": "50852273-70a2-469d-b485-0e4410454f2e",
+        "barcode": "MANUAL",
+        "name": "\u6ef7\u8089",
+        "image": null,
+        "category": "\u719f\u98df \ud83c\udf72",
+        "added_at": "2026-02-06",
+        "expire_at": "2026-02-07",
+        "status": "in_fridge",
+        "consumed_at": null
+    }
+]
