@@ -1,75 +1,9 @@
 [
     {
-        "id": "87e3af1b-9dac-4dd5-bfa3-d2655b79ba06",
+        "id": "6209c59e-e22f-47ae-b23b-54234172fe6b",
         "barcode": "",
-        "name": "apple",
-        "image": "c:\\Users\\willy\\Documents\\master2\\tartonHack\\model\\food/test2.jpg",
-        "category": "Fruit",
-        "added_at": "2026-02-07",
-        "expire_at": "2026-02-14",
-        "status": "in_fridge",
-        "consumed_at": null
-    },
-    {
-        "id": "95520a27-100e-4d6c-a042-46627577b17e",
-        "barcode": "",
-        "name": "tomato",
-        "image": "c:\\Users\\willy\\Documents\\master2\\tartonHack\\model\\food/test2.jpg",
-        "category": "Vegetables",
-        "added_at": "2026-02-07",
-        "expire_at": "2026-02-21",
-        "status": "in_fridge",
-        "consumed_at": null
-    },
-    {
-        "id": "e7bf12f1-8bbf-4390-b3f4-ca1b5892ba3e",
-        "barcode": "",
-        "name": "tomato",
-        "image": "c:\\Users\\willy\\Documents\\master2\\tartonHack\\model\\food/test2.jpg",
-        "category": "Vegetables",
-        "added_at": "2026-02-07",
-        "expire_at": "2026-02-21",
-        "status": "in_fridge",
-        "consumed_at": null
-    },
-    {
-        "id": "fcacd6e7-79fc-4e46-b670-b86e822df607",
-        "barcode": "",
-        "name": "tomato",
-        "image": "c:\\Users\\willy\\Documents\\master2\\tartonHack\\model\\food/test2.jpg",
-        "category": "Vegetables",
-        "added_at": "2026-02-07",
-        "expire_at": "2026-02-21",
-        "status": "in_fridge",
-        "consumed_at": null
-    },
-    {
-        "id": "a4df12ce-c92e-4bfa-ba5f-57811ad006df",
-        "barcode": "",
-        "name": "tomato",
-        "image": "c:\\Users\\willy\\Documents\\master2\\tartonHack\\model\\food/test2.jpg",
-        "category": "Vegetables",
-        "added_at": "2026-02-07",
-        "expire_at": "2026-02-21",
-        "status": "in_fridge",
-        "consumed_at": null
-    },
-    {
-        "id": "6f5d3cb8-6116-4042-b636-9dc68ad68239",
-        "barcode": "",
-        "name": "tomato",
-        "image": "c:\\Users\\willy\\Documents\\master2\\tartonHack\\model\\food/test2.jpg",
-        "category": "Vegetables",
-        "added_at": "2026-02-07",
-        "expire_at": "2026-02-21",
-        "status": "in_fridge",
-        "consumed_at": null
-    },
-    {
-        "id": "e7633cd8-aabc-4140-80c7-3c6dac526446",
-        "barcode": "",
-        "name": "mango",
-        "image": "c:\\Users\\willy\\Documents\\master2\\tartonHack\\model\\food/test2.jpg",
+        "name": "citrus",
+        "image": "c:\\Users\\willy\\Documents\\master2\\tartonHack\\model\\food/test4.jpg",
         "category": "Others",
         "added_at": "2026-02-07",
         "expire_at": "2026-02-12",

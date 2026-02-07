@@ -38,11 +38,12 @@ CATEGORY_MAP = {
     "egg": "Eggs",
     "onion": "Vegetables",
     "tomato": "Vegetables",
+    "citron": "Fruit",
     # 根據你的需要持續增加標籤...
 }
 
 # 4. 進行辨識
-img_path = os.path.join(current_dir, 'food/test2.jpg') # 請替換成你的圖片路徑
+img_path = os.path.join(current_dir, 'food/test4.jpg') # 請替換成你的圖片路徑
 results = model(img_path, conf=0.08)  # conf 是置信度閾值，可以根據需要調整
 
 # 5. 統計偵測到的品項數量
