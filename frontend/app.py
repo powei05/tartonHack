@@ -192,7 +192,7 @@ with tab3:
         api_url = f"{BACKEND_URL}/api/scan_barcode"
         files = {"image": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
         try:
-            r = requests.post(api_url, files=files, timeout=20)
+            r = requests.post(api_url, files=files, timeout=120)
             if r.status_code == 200:
                 return r.json().get("barcodes", [])
             else:
@@ -205,7 +205,7 @@ with tab3:
     def lookup_barcode_with_backend(barcode: str):
         api_url = f"{BACKEND_URL}/api/barcode/{barcode}"
         try:
-            r = requests.get(api_url, timeout=15)
+            r = requests.get(api_url, timeout=120)
             if r.status_code == 200:
                 return r.json().get("item")
             return None
