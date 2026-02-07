@@ -1,0 +1,15 @@
+name: tarton
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - opencv
+  - numpy
+  - pip:
+      - fastapi
+      - uvicorn
+      - streamlit
+      - ultralytics
+      - requests
+      - huggingface_hub
