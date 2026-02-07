@@ -1,3 +1,5 @@
+from barcode_scanner import decode_barcodes_from_bytes
+import requests
 from datetime import date, timedelta
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -263,3 +265,42 @@ def lookup_barcode(barcode: str):
     except Exception as e:
         print(f"Error fetching OFF: {e}")
         return JSONResponse(status_code=500, content={"detail": str(e)})
+@app.post("/api/scan_barcode")
+async def scan_barcode(image: UploadFile = File(...)):
+    # 做什么：从图片里解码条形码
+    # 为什么：前端正在 POST /api/scan_barcode，不加就永远 404
+    if not image:
+        raise HTTPException(status_code=400, detail="Missing file field 'image'")
+    content = await image.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Empty image file")
+
+    results = await run_in_threadpool(decode_barcodes_from_bytes, content)
+    codes = [r.data for r in results]
+    return {
+        "barcodes": codes,
+        "results": [{"type": r.type, "data": r.data, "rect": r.rect} for r in results],
+    }
+
+
+@app.get("/api/barcode/{code}")
+def lookup_barcode(code: str):
+    # 做什么：用条码去查商品信息（OpenFoodFacts）
+    # 为什么：前端正在 GET /api/barcode/<code>，不加就永远 404
+    url = f"https://world.openfoodfacts.org/api/v2/product/{code}.json"
+    r = requests.get(url, timeout=10)
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail="Barcode lookup failed")
+
+    data = r.json()
+    if not data.get("product"):
+        raise HTTPException(status_code=404, detail="Barcode not found")
+
+    p = data["product"]
+    return {
+        "barcode": code,
+        "name": p.get("product_name") or p.get("product_name_en") or "",
+        "image": p.get("image_url") or "",
+        "brands": p.get("brands") or "",
+        "categories": p.get("categories") or "",
+    }
