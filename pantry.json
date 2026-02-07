@@ -1,0 +1,46 @@
+[
+    {
+        "id": "14744ebc-4231-429c-8201-1bc905d22f5a",
+        "barcode": "3017620422003",
+        "name": "Nutella",
+        "image": "https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.633.200.jpg",
+        "category": "\u4e00\u822c\u98df\u54c1 \ud83d\udce6",
+        "added_at": "2026-02-07",
+        "expire_at": "2026-02-14",
+        "status": "in_fridge",
+        "consumed_at": null
+    },
+    {
+        "id": "5a2a9397-9e5c-4fae-a351-f5fbb0657932",
+        "barcode": "3017620422003",
+        "name": "Nutella",
+        "image": "https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.633.200.jpg",
+        "category": "\u4e00\u822c\u98df\u54c1 \ud83d\udce6",
+        "added_at": "2026-02-07",
+        "expire_at": "2026-02-14",
+        "status": "in_fridge",
+        "consumed_at": null
+    },
+    {
+        "id": "fc969248-264b-45f8-8c78-b5ec37e11550",
+        "barcode": "3017620422003",
+        "name": "Nutella",
+        "image": "https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.633.200.jpg",
+        "category": "\u4e00\u822c\u98df\u54c1 \ud83d\udce6",
+        "added_at": "2026-02-07",
+        "expire_at": "2026-02-14",
+        "status": "in_fridge",
+        "consumed_at": null
+    },
+    {
+        "id": "bdf02c01-dd51-435e-83ed-a46ef3029c4b",
+        "barcode": "3017620422003",
+        "name": "Nutella",
+        "image": "https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.633.200.jpg",
+        "category": "\u4e00\u822c\u98df\u54c1 \ud83d\udce6",
+        "added_at": "2026-02-07",
+        "expire_at": "2026-02-14",
+        "status": "in_fridge",
+        "consumed_at": null
+    }
+]
