@@ -9,12 +9,13 @@ from datetime import datetime, timedelta
 # 🔧 Settings & Constants
 # =========================
 # Backend API URL (Ensure FastAPI is running on port 8000)
-BACKEND_URL = "http://127.0.0.1:8000"
+# BACKEND_URL = "http://127.0.0.1:8000"
+BACKEND_URL = "https://tartonhack.onrender.com/"
 
 # Streamlit Page Configuration
 st.set_page_config(
     page_title="SCOTTY FRIDDDDDGE", 
-    page_icon="scotty.png"  
+    page_icon="frontend/scotty.png"  
 )
 
 # Local Database File
@@ -115,15 +116,21 @@ if 'pantry' not in st.session_state:
     st.session_state.pantry = load_pantry()
 
 # =========================
-# 🖥️ UI Layout
+# 🖥️ UI Layout (Header 修飾版)
 # =========================
+# 改成 [0.8, 5] 讓 logo 不要離標題太遠
+col_logo, col_title = st.columns([0.8, 4], gap="medium", vertical_alignment="center")
 
-col_logo, col_title = st.columns([1, 5])
 with col_logo:
     try:
-        st.image("scotty.png", use_container_width=True)
+        # 加上 width 限制，避免它無限放大
+        st.image("frontend/scotty.png", width=80) 
     except:
         st.write("🐶") 
+
+with col_title:
+    st.title("SCOTTY FRIDDDDDGE 🧊")
+    st.caption("Remember what you've bought!") # 用 caption 取代 markdown 比較秀氣
 
 st.divider()
 
@@ -263,28 +270,75 @@ with tab3:
     item = st.session_state.barcode_item
     if item:
         st.markdown("### 3) Confirm & Add")
+        
+        # ==========================================
+        # 🚨 補回這兩行！不然下面 display_cat 會報錯
+        # ==========================================
         raw_cat = str(item.get("category", "unknown")).lower()
         display_cat = CATEGORY_MAP.get(raw_cat, "Others 📦")
+        # ==========================================
 
-        cimg, cinfo = st.columns([1, 3])
+        # --- 佈局 ---
+        cimg, cinfo = st.columns([1, 2])
+        
         with cimg:
             if item.get("image"):
                 st.image(item["image"], use_container_width=True)
             else:
-                st.markdown("<div style='font-size:40px;text-align:center;'>📦</div>", unsafe_allow_html=True)
+                st.markdown("📦")
 
         with cinfo:
-            st.markdown(f"**{item.get('name', 'unknown')}**")
+            st.markdown(f"### {item.get('name', 'unknown')}")
             st.caption(f"Barcode: {item.get('barcode')}")
-            st.caption(f"Category: {display_cat}")
-            st.caption(f"Suggested Expiry: {item.get('expire_at')}")
+            # 這裡也可以顯示一下分類
+            st.caption(f"Category: {display_cat}") 
+            
+            # ==========================
+            # 🧪 Bio-Scanner Feature 
+            # ==========================
+            st.markdown("---")
+            st.markdown("**🧬 Bio-Analysis:**")
 
+            # 1. NOVA Group
+            nova = item.get("nova_group")
+            if nova == 4:
+                st.error("⚠️ **ULTRA-PROCESSED (NOVA 4)**")
+                st.caption("Contains industrial formulations.")
+            elif nova == 3:
+                st.warning("⚠️ Processed Food (NOVA 3)")
+            elif nova == 1:
+                st.success("✅ Unprocessed / Minimally Processed")
+            else:
+                st.info(f"Processing Level: {nova if nova else 'Unknown'}")
+
+            # 2. Sugar
+            sugar_content = item.get("sugar_100g", 0)
+            if sugar_content:
+                # 這裡加個防呆，有些資料是字串
+                try:
+                    sugar_val = float(sugar_content)
+                except:
+                    sugar_val = 0
+                
+                cubes = int(sugar_val / 3)
+                if cubes > 0:
+                    st.write(f"**Sugar:** {sugar_val}g / 100g")
+                    st.markdown(f"{'🍬' * cubes}")
+                else:
+                    st.caption("✅ Low Sugar / Sugar Free")
+
+        # ==========================
+        # Options (這裡就不會報錯了)
+        # ==========================
         st.markdown("#### Options")
         colA, colB, colC = st.columns([2, 2, 1])
         with colA:
             cat_values = list(CATEGORY_MAP.values())
+            # 現在 display_cat 已經定義了，這裡就安全了
             default_idx = cat_values.index(display_cat) if display_cat in cat_values else 0
             cat_override = st.selectbox("Edit Category", cat_values, index=default_idx)
+            
+        # ... (後面的 Expiry 和 Qty 保持不變) ...
         with colB:
             try:
                 default_exp = datetime.strptime(item.get("expire_at"), "%Y-%m-%d").date()
@@ -306,6 +360,8 @@ with tab3:
                         "category": cat_override,
                         "added_at": datetime.now().strftime("%Y-%m-%d"),
                         "expire_at": expire_override.strftime("%Y-%m-%d"),
+                        "nova_group": item.get("nova_group"),
+                        "sugar_100g": item.get("sugar_100g"),
                         "status": "in_fridge",
                         "consumed_at": None
                     })
@@ -336,8 +392,14 @@ display_items = active_items if selected_cat == "All" else [i for i in active_it
 if not display_items:
     st.info("The fridge is empty!")
 
+# ==========================================
+# 📐 Compact UI (緊湊版清單)
+# ==========================================
+
 for item in display_items:
     idx = st.session_state.pantry.index(item)
+    
+    # 計算過期天數
     try:
         expire_obj = datetime.strptime(item['expire_at'], "%Y-%m-%d").date()
         days_left = (expire_obj - datetime.now().date()).days
@@ -345,23 +407,52 @@ for item in display_items:
         days_left = 0
 
     with st.container(border=True):
-        c1, c2, c3 = st.columns([1.2, 3, 1])
+        # 調整欄位比例：[0.5] 是給小圖片，[3] 給文字，[0.8] 給按鈕
+        c1, c2, c3 = st.columns([0.5, 3, 0.8])
+        
+        # --- 1. 小圖片 (Thumbnail) ---
         with c1:
             if item.get('image'):
-                st.image(item['image'], width=80, use_container_width=True)
+                st.image(item['image'], width=60) # 👈 改成 60，變更精緻
             else:
-                st.markdown("<div style='font-size:40px;text-align:center;'>📦</div>", unsafe_allow_html=True)
+                st.markdown("📦")
+        
+        # --- 2. 資訊區 (濃縮版) ---
         with c2:
-            st.markdown(f"**{item['name']}**")
-            st.caption(f"{item.get('category')} • Expires: {item['expire_at']}")
+            # 第一行：品名 + 分類 (用 bold 顯示品名)
+            st.markdown(f"**{item['name']}** <span style='color:gray; font-size:0.8em'>({item.get('category')})</span>", unsafe_allow_html=True)
+            
+            # --- 準備標籤 (Tags) ---
+            tags = []
+            
+            # (A) 過期狀態 (用簡寫)
             if days_left < 0:
-                st.markdown(f":red[❌ Expired {abs(days_left)} days ago]")
+                tags.append(f":red[❌ {abs(days_left)}d ago]")
             elif days_left <= 3:
-                st.markdown(f":orange[⚠️ {days_left} days left]")
+                tags.append(f":orange[⚠️ {days_left}d left]")
             else:
-                st.markdown(f":green[✅ {days_left} days left]")
+                tags.append(f":green[✅ {days_left}d]")
+
+            # (B) NOVA 加工等級
+            nova = item.get("nova_group")
+            if nova == 4:
+                tags.append(":red[☣️ Processed]")
+            elif nova == 1:
+                tags.append(":green[🌿 Natural]")
+
+            # (C) 糖分
+            sugar = item.get("sugar_100g")
+            if sugar and float(sugar) > 10:
+                tags.append(f":red[🍬 {int(float(sugar))}g / 100g  Sug]")
+
+            # 第二行：把所有標籤用 ' • ' 串起來，只佔一行
+            st.caption(" • ".join(tags))
+
+        # --- 3. 按鈕區 (垂直置中) ---
         with c3:
-            if st.button("🍽️ Eat", key=f"eat_{item['id']}"):
+            # 這裡用一個 trick 讓按鈕在容器裡看起來比較置中
+            st.write("") 
+            if st.button("🍽️", key=f"eat_{item['id']}", help="Eat this!", use_container_width=True):
                 st.session_state.pantry[idx]['status'] = 'consumed'
                 st.session_state.pantry[idx]['consumed_at'] = datetime.now().strftime("%Y-%m-%d")
                 save_pantry(st.session_state.pantry)
