@@ -25,23 +25,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ======================
+# Project paths
+# backend/main.py -> PROJECT_ROOT = repo root (tartonHack)
+# ======================
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))               # .../tartonHack/backend
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))        # .../tartonHack
+
+
 # ======================
 # Uploads (serve static)
+# Render 上项目目录通常不可写，/tmp 可写
+# 也支持用环境变量 UPLOAD_DIR 覆盖
 # ======================
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/tmp/uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 # ======================
 # Model Path (robust)
+# 优先用环境变量 MODEL_PATH；否则用 repo_root/model/best.pt
 # ======================
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))            # .../backend
-PROJECT_ROOT = os.path.dirname(CURRENT_DIR)                         # .../tartonHack
-
-# 优先用环境变量 MODEL_PATH；否则默认用项目根目录的 model/best.pt
 DEFAULT_MODEL_PATH = os.path.join(PROJECT_ROOT, "model", "best.pt")
 MODEL_PATH = os.environ.get("MODEL_PATH", DEFAULT_MODEL_PATH)
+MODEL_PATH = os.path.abspath(MODEL_PATH)
 
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError(
@@ -101,7 +111,7 @@ def _infer_to_items(image_fs_path: str, image_url: str, base_id: str, conf: floa
     detected_image_url = None
 
     for r in results:
-        # 保存带框图（可选，但很利于调试）
+        # 保存带框图（很利于调试）
         im_array = r.plot()  # BGR ndarray
         det_filename = f"{base_id}_detected.jpg"
         det_fs_path = os.path.join(UPLOAD_DIR, det_filename)
@@ -126,10 +136,10 @@ def _infer_to_items(image_fs_path: str, image_url: str, base_id: str, conf: floa
             items.append(
                 {
                     "id": str(uuid.uuid4()),
-                    "barcode": None,              # 后续扫码再填
-                    "name": label,                # 这里用 YOLO label（归一化后）
-                    "image": image_url,           # 统一用后端 URL
-                    "category": category,         # 业务大类（Meat/Fruit/...）
+                    "barcode": None,
+                    "name": label,
+                    "image": image_url,      # 原图 URL（/uploads/xxx.jpg）
+                    "category": category,    # Meat/Fruit/...
                     "added_at": today.strftime("%Y-%m-%d"),
                     "expire_at": expire_date.strftime("%Y-%m-%d"),
                     "status": "in_fridge",
@@ -138,6 +148,11 @@ def _infer_to_items(image_fs_path: str, image_url: str, base_id: str, conf: floa
             )
 
     return items, detected_image_url, dict(counts)
+
+
+@app.get("/")
+def root():
+    return {"ok": True, "msg": "Fridge backend is running. Visit /docs"}
 
 
 @app.get("/health")
