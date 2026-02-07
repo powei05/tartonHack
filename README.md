@@ -57,6 +57,17 @@ You can test the API at:
 ```text
 http://127.0.0.1:8000/docs
 ```
+## Start the Frontend (Streamlit)
+```bash
+conda activate tarton
+streamlit run frontend/app.py
+```
+```text```
+Streamlit will automatically open in your browser (default: http://localhost:8501
+).
+```
+
+
 
 ## Development Notes
 

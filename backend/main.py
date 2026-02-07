@@ -70,28 +70,68 @@ print("[YOLO] Classes:", MODEL.names)
 # Expiry rules & category map
 # ======================
 EXPIRY_RULES = {
-    "Meat": 21,
-    "Vegetables": 14,
-    "Cheese": 30,
-    "Fruit": 7,
-    "Eggs": 21,
-    "Others": 5,
+    "Meat": 7,          # 生肉類 (縮短至1週較安全)
+    "Seafood": 3,       # 海鮮類 (期限最短)
+    "Vegetables": 10,   # 蔬菜類
+    "Fruit": 7,         # 水果類
+    "Dairy": 14,        # 乳製品 (鮮乳、奶油等)
+    "Cheese": 30,       # 起司類 (發酵乳酪通常較久)
+    "Eggs": 21,         # 蛋類
+    "Grains": 7,        # 麵包、麵條、米製品
+    "Pantry": 90,       # 調味料、乾貨、油品 (期限長)
+    "Processed": 14,    # 加工食品、微波食品
+    "Others": 5,        # 其他
 }
 
 # YOLO label -> business category
 CATEGORY_MAP = {
-    "apple": "Fruit",
-    "banana": "Fruit",
-    "orange": "Fruit",
-    "broccoli": "Vegetables",
-    "carrot": "Vegetables",
-    "sandwich": "Others",
-    "pizza": "Others",
-    "cake": "Others",
-    "hot dog": "Meat",
-    "egg": "Eggs",
-    "onion": "Vegetables",
-    "tomato": "Vegetables",
+    # --- Seafood (海鮮: 3天) ---
+    "fish": "Seafood", "seafood": "Seafood", "seaweed": "Seafood",
+    
+    # --- Meat (肉類: 7天) ---
+    "beef": "Meat", "chicken": "Meat", "pork": "Meat", "poultry": "Meat", 
+    "meat": "Meat", "poultry": "Meat",
+
+    # --- Processed (加工食品: 14天) ---
+    "processed_meat": "Processed", "hot dog": "Processed", "processed_food": "Processed",
+    "kimchi": "Processed", "pickle": "Processed", "tofu": "Processed",
+    "sandwich": "Processed", "pizza": "Processed", "cake": "Processed",
+
+    # --- Dairy (乳製品: 14天) ---
+    "dairy": "Dairy", "butter": "Dairy",
+    
+    # --- Grains (糧食/麵點: 7天) ---
+    "bread": "Grains", "noodles": "Grains", "pasta": "Grains", 
+    "rice_product": "Grains", "wheat": "Grains", "cereal": "Grains",
+    
+    # --- Pantry (乾貨/調料: 90天) ---
+    "honey": "Pantry", "oil": "Pantry", "olive": "Pantry", "sauce": "Pantry", 
+    "seasoning": "Pantry", "spice": "Pantry", "nuts": "Pantry", "chocolate": "Pantry",
+    "coffee": "Pantry", "juice": "Pantry", "garlic": "Pantry", "ginger": "Pantry",
+    
+    # --- Vegetables (蔬菜: 10天) ---
+    "artichoke": "Vegetables", "asparagus": "Vegetables", "bamboo_shoots": "Vegetables",
+    "beans": "Vegetables", "beetroot": "Vegetables", "broccoli": "Vegetables",
+    "cabbage": "Vegetables", "cactus": "Vegetables", "carrot": "Vegetables",
+    "cassava": "Vegetables", "cauliflower": "Vegetables", "corn": "Vegetables",
+    "cucumber": "Vegetables", "eggplant": "Vegetables", "gourd": "Vegetables",
+    "herbs": "Vegetables", "leafy_greens": "Vegetables", "lentils": "Vegetables",
+    "lettuce": "Vegetables", "moringa": "Vegetables", "mushroom": "Vegetables",
+    "okra": "Vegetables", "onion": "Vegetables", "peas": "Vegetables",
+    "pepper": "Vegetables", "potato": "Vegetables", "pumpkin": "Vegetables",
+    "radish": "Vegetables", "spinach": "Vegetables", "taro": "Vegetables",
+    "tomato": "Vegetables", "turnip": "Vegetables", "zucchini": "Vegetables",
+    "avocado": "Vegetables",
+    
+    # --- Fruit (水果: 7天) ---
+    "apple": "Fruit", "banana": "Fruit", "citrus": "Fruit", "fruit": "Fruit",
+    "grape": "Fruit", "jackfruit": "Fruit", "kiwi": "Fruit", "mango": "Fruit",
+    "papaya": "Fruit", "pear": "Fruit", "pineapple": "Fruit", "plum": "Fruit",
+    "pomegranate": "Fruit", "strawberry": "Fruit", "watermelon": "Fruit",
+    
+    # --- 原有類別 ---
+    "cheese": "Cheese",
+    "egg": "Eggs"
 }
 
 
