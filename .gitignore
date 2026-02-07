@@ -21,4 +21,22 @@ Thumbs.db
 
 # 用戶上傳的圖片 (通常不建議傳上大量測試圖，除非是範例)
 backend/uploads/*
-!backend/uploads/.gitkeeppantry.json
+!backend/uploads/.gitkeep
+# runtime uploads (do not commit)
+uploads/
+backend/uploads/
+**/uploads/
+*.jpg
+*.jpeg
+*.png
+pantry.json
+frontend/pantry.json
+
+# runtime uploads (do not commit)
+pantry.json
+frontend/pantry.json
+uploads/
+backend/uploads/
+*.jpg
+*.jpeg
+*.png
