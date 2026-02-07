@@ -12,7 +12,10 @@ from datetime import datetime, timedelta
 BACKEND_URL = "http://127.0.0.1:8000"
 
 # Streamlit Page Configuration
-st.set_page_config(page_title="Fridge Assistant", page_icon="🥦")
+st.set_page_config(
+    page_title="SCOTTY FRIDDDDDGE", 
+    page_icon="scotty.png"  
+)
 
 # Local Database File
 DB_FILE = "pantry.json"
@@ -116,8 +119,11 @@ if 'pantry' not in st.session_state:
 # =========================
 
 col_logo, col_title = st.columns([1, 5])
-with col_title:
-    st.title("FRIDDDDDGE 🧊")
+with col_logo:
+    try:
+        st.image("scotty.png", use_container_width=True)
+    except:
+        st.write("🐶") 
 
 st.divider()
 
