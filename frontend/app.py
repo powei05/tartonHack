@@ -6,367 +6,266 @@ import uuid
 from datetime import datetime, timedelta
 
 # =========================
-# Paths (make frontend self-contained)
+# 🔧 設定與常數
 # =========================
-FRONTEND_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_FILE = os.path.join(FRONTEND_DIR, "pantry.json")
-ICON_PATH = os.path.join(FRONTEND_DIR, "fridge_icon.png")
+# 後端 API 地址 (請確認你的 FastAPI 有跑在 port 8000)
+BACKEND_URL = "http://127.0.0.1:8000"
 
-# =========================
-# Backend connection
-# =========================
-BACKEND_BASE = os.environ.get("BACKEND_BASE", "http://127.0.0.1:8000")
-
-BACKEND_CAT_TO_UI = {
-    # backend categories -> UI categories
-    "Meat": "肉類 🥩",
-    "Vegetables": "蔬果 🥦",
-    "Fruit": "蔬果 🥦",
-    "Eggs": "一般食品 📦",
-    "Cheese": "乳製品 🥛",
-    "Dairy": "乳製品 🥛",
-    "Others": "一般食品 📦",
-    # lowercase variants (backend may normalize)
-    "meat": "肉類 🥩",
-    "vegetables": "蔬果 🥦",
-    "fruit": "蔬果 🥦",
-    "eggs": "一般食品 📦",
-    "cheese": "乳製品 🥛",
-    "dairy": "乳製品 🥛",
-    "others": "一般食品 📦",
-}
-
-def abs_backend_url(path: str) -> str:
-    """Convert '/uploads/xx.jpg' to 'http://127.0.0.1:8000/uploads/xx.jpg'."""
-    if not path:
-        return None
-    if path.startswith("http"):
-        return path
-    return BACKEND_BASE.rstrip("/") + path
-
-def scan_image_via_backend(uploaded_file):
-    """Send Streamlit camera image to backend /api/scan and return items."""
-    url = f"{BACKEND_BASE}/api/scan"
-    file_bytes = uploaded_file.getvalue()
-    files = {
-        "image": (
-            uploaded_file.name or "photo.jpg",
-            file_bytes,
-            uploaded_file.type or "image/jpeg",
-        )
-    }
-    r = requests.post(url, files=files, timeout=60)
-    r.raise_for_status()
-    data = r.json()
-
-    items = data.get("items", [])
-    for it in items:
-        it["image"] = abs_backend_url(it.get("image"))
-        raw_cat = it.get("category")
-        it["category"] = BACKEND_CAT_TO_UI.get(raw_cat, raw_cat or "一般食品 📦")
-    return items, data
-
-# =========================
-# Page
-# =========================
+# 讓 Streamlit 頁面設定
 st.set_page_config(page_title="Smart Fridge", page_icon="🥦")
 
+# 本地資料庫檔案
+DB_FILE = "pantry.json"
+
+# --- 分類對照表 (後端英文 -> 前端中文) ---
+# 這樣你的模型只要回傳 "eggs"，介面就會顯示 "蛋類 🥚"
+CATEGORY_MAP = {
+    # 標準類別
+    "eggs": "蛋類 🥚",
+    "vegetables": "蔬果 🥦",
+    "fruits": "蔬果 🍎",
+    "dairy": "乳製品 🥛",
+    "meat": "肉類 🥩",
+    "beverage": "飲料 🥤",
+    "snack": "零食 🍪",
+    "condiment": "調味料 🧂",
+    "frozen": "冷凍食品 🧊",
+    # 容錯處理 (大小寫或複數)
+    "egg": "蛋類 🥚",
+    "vegetable": "蔬果 🥦",
+    "fruit": "蔬果 🍎",
+    "unknown": "其他 📦"
+}
+
 # =========================
-# Helpers (barcode mode)
+# 🛠️ 核心功能函數
 # =========================
-def get_product_info(barcode):
-    """Fetch product info from OpenFoodFacts."""
-    if len(barcode) < 3:
-        return None
-    url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
-    try:
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("status") == 1:
-                return data["product"]
-    except Exception as e:
-        print(e)
-    return None
 
-def determine_category(api_data):
-    """Auto category for OpenFoodFacts products."""
-    if not api_data:
-        return "其他 📦"
-
-    categories = str(api_data.get("categories_tags", [])).lower()
-    keywords = str(api_data.get("keywords", [])).lower()
-    full_text = categories + keywords
-
-    if any(x in full_text for x in ["milk", "dairy", "cheese", "yogurt", "乳", "優格"]):
-        return "乳製品 🥛"
-    elif any(x in full_text for x in ["meat", "chicken", "beef", "pork", "fish", "肉"]):
-        return "肉類 🥩"
-    elif any(x in full_text for x in ["vegetable", "plant", "fruit", "salad", "蔬", "果"]):
-        return "蔬果 🥦"
-    elif any(x in full_text for x in ["beverage", "drink", "soda", "juice", "water", "tea", "coffee", "飲", "茶", "水"]):
-        return "飲料 🥤"
-    elif any(x in full_text for x in ["snack", "chocolate", "chip", "candy", "cookie", "零食", "餅"]):
-        return "零食 🍪"
-    elif any(x in full_text for x in ["sauce", "condiment", "oil", "vinegar", "醬", "油"]):
-        return "調味料 🧂"
-    elif any(x in full_text for x in ["frozen", "ice", "凍"]):
-        return "冷凍食品 🧊"
-    else:
-        return "一般食品 📦"
-
-def create_pantry_item(api_data, scanned_barcode, user_image=None):
-    """Create pantry item for barcode mode."""
-    if api_data:
-        api_image = api_data.get("image_front_small_url") or api_data.get("image_front_url")
-        item_name = api_data.get("product_name", "未知商品")
-        category = determine_category(api_data)
-    else:
-        api_image = None
-        item_name = f"手動輸入 ({scanned_barcode})"
-        category = "其他 📦"
-
-    final_image = api_image if api_image else user_image
-    today = datetime.now().date()
-    default_expire = today + timedelta(days=7)
-
-    return {
-        "id": str(uuid.uuid4()),
-        "barcode": scanned_barcode,
-        "name": item_name,
-        "image": final_image,
-        "category": category,
-        "added_at": today.strftime("%Y-%m-%d"),
-        "expire_at": default_expire.strftime("%Y-%m-%d"),
-        "status": "in_fridge",
-        "consumed_at": None,
+def scan_image_with_backend(uploaded_file):
+    """
+    將圖片上傳到後端 /api/scan，並接收模型辨識結果
+    """
+    api_url = f"{BACKEND_URL}/api/scan"
+    
+    # 準備檔案格式
+    files = {
+        "image": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)
     }
+    
+    try:
+        response = requests.post(api_url, files=files, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            items = result.get("items", [])
+            
+            # --- 資料清洗 ---
+            cleaned_items = []
+            for item in items:
+                # 1. 處理圖片路徑: 把 /uploads/xxx.jpg 變成 http://localhost:8000/uploads/xxx.jpg
+                img_path = item.get("image")
+                if img_path and img_path.startswith("/"):
+                    item["image"] = f"{BACKEND_URL}{img_path}"
+                
+                # 2. 處理分類: 英文 -> 中文
+                raw_cat = str(item.get("category", "unknown")).lower()
+                item["category"] = CATEGORY_MAP.get(raw_cat, "其他 📦")
+                
+                cleaned_items.append(item)
+                
+            return cleaned_items
+        else:
+            st.error(f"後端錯誤: {response.status_code} - {response.text}")
+            return []
+            
+    except requests.exceptions.ConnectionError:
+        st.error("無法連線到後端！請確認 `python backend.py` 是否正在執行。")
+        return []
+    except Exception as e:
+        st.error(f"發生未預期的錯誤: {e}")
+        return []
 
 # =========================
-# Local "DB" (pantry.json)
+# 💾 資料庫 (JSON) 管理
 # =========================
 def save_pantry(pantry_list):
-    with open(DB_FILE, "w", encoding="utf-8") as f:
+    with open(DB_FILE, "w", encoding='utf-8') as f:
         json.dump(pantry_list, f, indent=4, ensure_ascii=False)
 
 def load_pantry():
-    """Load pantry.json and auto-delete consumed items after 7 days."""
     if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r", encoding="utf-8") as f:
+        with open(DB_FILE, "r", encoding='utf-8') as f:
             data = json.load(f)
-
+        
+        # 自動清理超過 7 天的完食項目
         cleaned_data = []
         today = datetime.now().date()
         dirty = False
-
+        
         for item in data:
-            if item.get("status") == "consumed" and item.get("consumed_at"):
-                consumed_date = datetime.strptime(item["consumed_at"], "%Y-%m-%d").date()
-                days_passed = (today - consumed_date).days
-                if days_passed > 7:
+            if item.get('status') == 'consumed' and item.get('consumed_at'):
+                consumed_date = datetime.strptime(item['consumed_at'], "%Y-%m-%d").date()
+                if (today - consumed_date).days > 7:
                     dirty = True
-                    continue
+                    continue 
             cleaned_data.append(item)
-
-        if dirty:
+        
+        if dirty: 
             save_pantry(cleaned_data)
-
         return cleaned_data
     return []
 
-if "pantry" not in st.session_state:
+if 'pantry' not in st.session_state:
     st.session_state.pantry = load_pantry()
 
 # =========================
-# Dialog: manual entry
+# 🖥️ UI 介面
 # =========================
-@st.dialog("📝 手動新增食材")
-def manual_entry_dialog():
-    st.caption("適用於：剩菜、無條碼商品")
-    name_input = st.text_input("商品名稱", placeholder="例如：媽媽煮的滷肉")
-    category_options = [
-        "一般食品 📦", "乳製品 🥛", "肉類 🥩", "蔬果 🥦",
-        "飲料 🥤", "零食 🍪", "調味料 🧂", "冷凍食品 🧊", "熟食 🍲"
-    ]
-    category_input = st.selectbox("分類", category_options)
-    today = datetime.now().date()
-    expire_input = st.date_input("過期日", value=today + timedelta(days=3))
 
-    if st.button("確認新增", type="primary"):
-        if name_input:
-            new_item = {
-                "id": str(uuid.uuid4()),
-                "barcode": "MANUAL",
-                "name": name_input,
-                "image": None,
-                "category": category_input,
-                "added_at": today.strftime("%Y-%m-%d"),
-                "expire_at": expire_input.strftime("%Y-%m-%d"),
-                "status": "in_fridge",
-                "consumed_at": None,
-            }
-            st.session_state.pantry.append(new_item)
-            save_pantry(st.session_state.pantry)
-            st.success(f"已加入：{name_input}")
-            st.rerun()
-        else:
-            st.warning("請輸入名稱")
-
-# =========================
-# UI start
-# =========================
 col_logo, col_title = st.columns([1, 5])
-with col_logo:
-    if os.path.exists(ICON_PATH):
-        st.image(ICON_PATH, width=60)
-    else:
-        st.write("🥦")
+#with col_logo:
+#    st.write("🥦")
 with col_title:
-    st.title("智慧冰箱")
+    st.title("FOOOOOOD in FRIDDDDDDGE")
 
-st.write("---")
+st.divider()
 
-col_tabs, col_manual_btn = st.columns([3, 1])
-with col_manual_btn:
-    st.write("")
-    if st.button("➕ 手動輸入"):
-        manual_entry_dialog()
+# --- 分頁區塊 ---
+tab1, tab2 = st.tabs(["📸 拍照辨識 (AI)", "📝 手動/條碼輸入"])
 
-with col_tabs:
-    tab1, tab2 = st.tabs(["📸 拍照掃描", "⌨️ Barcode 輸入"])
-
-    # ---------- Tab 1: Photo -> Backend YOLO ----------
-    with tab1:
-        camera_photo = st.camera_input("點擊拍照", key="camera_scan", label_visibility="collapsed")
-        if camera_photo:
-            st.success("影像已擷取！")
-            if st.button("送去辨識並加入冰箱", key="btn_cam_add"):
-                try:
-                    items, raw = scan_image_via_backend(camera_photo)
-
-                    if not items:
-                        st.warning("模型没有识别到物品（items 为空）。换张更清晰/更近的照片试试。")
-                    else:
-                        st.session_state.pantry.extend(items)
+# [分頁 1] 拍照辨識
+with tab1:
+    st.caption("拍攝冰箱內的食材，讓 AI 自動幫你分類")
+    
+    camera_photo = st.camera_input("請拍照", label_visibility="collapsed")
+    
+    if camera_photo:
+        # 當使用者拍下照片後
+        col_btn, col_info = st.columns([1, 2])
+        
+        with col_btn:
+            if st.button("🚀 開始辨識", type="primary", use_container_width=True):
+                with st.spinner("正在傳送給 AI 模型分析..."):
+                    # 呼叫後端 API
+                    new_items = scan_image_with_backend(camera_photo)
+                    
+                    if new_items:
+                        st.session_state.pantry.extend(new_items)
                         save_pantry(st.session_state.pantry)
-                        st.success(f"已加入 {len(items)} 項")
+                        st.success(f"成功辨識並加入 {len(new_items)} 個項目！")
+                        st.rerun()
+                    else:
+                        st.warning("模型沒有偵測到任何食物，請試著靠近一點拍攝。")
 
-                    with st.expander("debug: backend response"):
-                        st.json(raw)
-
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"后端识别失败：{e}")
-
-    # ---------- Tab 2: Barcode -> OpenFoodFacts ----------
-    with tab2:
-        manual_code = st.text_input("輸入 Barcode", placeholder="例如: 5449000000996", key="manual_code")
-        if st.button("查詢並加入", key="btn_manual_add"):
-            if manual_code:
-                raw_product = get_product_info(manual_code)
-                if raw_product:
-                    new_item = create_pantry_item(raw_product, manual_code)
-                    st.session_state.pantry.append(new_item)
-                    save_pantry(st.session_state.pantry)
-                    st.rerun()
-                else:
-                    st.error("找不到此商品")
+# [分頁 2] 手動輸入 (保留原本功能)
+with tab2:
+    st.caption("如果 AI 認不出來，也可以手動輸入")
+    
+    with st.form("manual_form"):
+        name_in = st.text_input("商品名稱", placeholder="例如：喝剩的牛奶")
+        cat_in = st.selectbox("分類", list(CATEGORY_MAP.values()))
+        date_in = st.date_input("過期日", value=datetime.now().date() + timedelta(days=7))
+        
+        if st.form_submit_button("➕ 加入冰箱"):
+            if name_in:
+                new_item = {
+                    "id": str(uuid.uuid4()),
+                    "name": name_in,
+                    "image": None,
+                    "category": cat_in, # 直接存中文
+                    "added_at": datetime.now().strftime("%Y-%m-%d"),
+                    "expire_at": date_in.strftime("%Y-%m-%d"),
+                    "status": "in_fridge",
+                    "consumed_at": None
+                }
+                st.session_state.pantry.append(new_item)
+                save_pantry(st.session_state.pantry)
+                st.rerun()
 
 st.divider()
 
 # =========================
-# Main list (in_fridge)
+# ❄️ 冰箱清單顯示區
 # =========================
-active_items = [item for item in st.session_state.pantry if item.get("status") == "in_fridge"]
-all_categories = ["全部"] + sorted(list(set(item.get("category", "其他 📦") for item in active_items)))
 
-st.subheader("❄️ 我的冰箱")
-selected_category = st.radio(
-    "篩選分類：",
-    all_categories,
-    horizontal=True,
-    label_visibility="collapsed",
-)
+active_items = [item for item in st.session_state.pantry if item.get('status') == 'in_fridge']
+categories = ["全部"] + sorted(list(set(item.get('category', '其他 📦') for item in active_items)))
 
-if selected_category == "全部":
-    filtered_pantry = active_items
-else:
-    filtered_pantry = [item for item in active_items if item.get("category") == selected_category]
+st.subheader(f"❄️ 冰箱庫存 ({len(active_items)})")
+selected_cat = st.radio("篩選：", categories, horizontal=True, label_visibility="collapsed")
 
-st.caption(f"目前顯示: {selected_category} ({len(filtered_pantry)} 項)")
+# 篩選邏輯
+display_items = active_items if selected_cat == "全部" else [i for i in active_items if i.get('category') == selected_cat]
 
-if not filtered_pantry and selected_category != "全部":
-    st.info(f"你的冰箱裡沒有 {selected_category} 喔！")
+if not display_items:
+    st.info("這裡空空如也～")
 
-for item in filtered_pantry:
-    original_index = st.session_state.pantry.index(item)
-    expire_date = datetime.strptime(item["expire_at"], "%Y-%m-%d").date()
-    days_left = (expire_date - datetime.now().date()).days
-    item_category = item.get("category", "一般 📦")
+for item in display_items:
+    idx = st.session_state.pantry.index(item)
+    
+    # 計算剩餘天數
+    try:
+        expire_obj = datetime.strptime(item['expire_at'], "%Y-%m-%d").date()
+        days_left = (expire_obj - datetime.now().date()).days
+    except:
+        days_left = 0
 
     with st.container(border=True):
-        c1, c2, c3 = st.columns([1.5, 3.5, 1])
-
+        c1, c2, c3 = st.columns([1.2, 3, 1])
+        
         with c1:
-            if item.get("image") and str(item["image"]).startswith("http"):
-                st.image(item["image"], width=80)
+            # 圖片顯示邏輯
+            if item.get('image'):
+                st.image(item['image'], width=80, use_container_width=True)
             else:
-                st.markdown("<div style='text-align: center; font-size: 40px;'>📦</div>", unsafe_allow_html=True)
-
+                st.markdown("<div style='font-size:40px;text-align:center;'>📦</div>", unsafe_allow_html=True)
+        
         with c2:
-            st.markdown(f"**{item.get('name', 'unknown')}**")
-            st.caption(f"{item_category} • {item.get('expire_at')}")
-
-            if days_left < 3:
-                st.markdown(f":red[⚠️ 剩 {days_left} 天]")
+            st.markdown(f"**{item['name']}**")
+            st.caption(f"{item.get('category')} • 到期：{item['expire_at']}")
+            
+            if days_left < 0:
+                st.markdown(f":red[❌ 已過期 {abs(days_left)} 天]")
+            elif days_left <= 3:
+                st.markdown(f":orange[⚠️ 剩 {days_left} 天]")
             else:
                 st.markdown(f":green[✅ 剩 {days_left} 天]")
-
+                
         with c3:
             st.write("")
-            st.write("")
-            if st.button("🍽️", key=f"eat_{item['id']}"):
-                st.session_state.pantry[original_index]["status"] = "consumed"
-                st.session_state.pantry[original_index]["consumed_at"] = datetime.now().strftime("%Y-%m-%d")
+            if st.button("🍽️ 吃掉", key=f"eat_{item['id']}"):
+                st.session_state.pantry[idx]['status'] = 'consumed'
+                st.session_state.pantry[idx]['consumed_at'] = datetime.now().strftime("%Y-%m-%d")
                 save_pantry(st.session_state.pantry)
                 st.rerun()
 
 # =========================
-# Recently consumed
+# 🗑️ 近期已完食
 # =========================
-consumed_items = [item for item in st.session_state.pantry if item.get("status") == "consumed"]
+consumed_items = [item for item in st.session_state.pantry if item.get('status') == 'consumed']
 
 if consumed_items:
     st.markdown("---")
-    st.subheader(f"🥣 近期已完食 ({len(consumed_items)})")
-    st.caption("這裡會保留 7 天，或是你可以手動刪除。")
-
-    for item in consumed_items:
-        original_index = st.session_state.pantry.index(item)
-
-        with st.container():
-            col_a, col_b, col_c = st.columns([1, 3, 1])
-
-            with col_a:
-                if item.get("image") and str(item["image"]).startswith("http"):
-                    st.image(item["image"], width=40)
-                else:
-                    st.write("🥣")
-
-            with col_b:
-                st.write(f"~~{item.get('name', 'unknown')}~~")
+    with st.expander(f"🥣 近期已完食 ({len(consumed_items)})", expanded=False):
+        for item in consumed_items:
+            idx = st.session_state.pantry.index(item)
+            c1, c2, c3 = st.columns([1, 3, 1.5])
+            
+            with c2:
+                st.markdown(f"~~{item['name']}~~")
                 st.caption(f"完食於: {item.get('consumed_at')}")
-
-            with col_c:
-                if st.button("↩️", key=f"restore_{item['id']}", help="放回冰箱"):
-                    st.session_state.pantry[original_index]["status"] = "in_fridge"
-                    st.session_state.pantry[original_index]["consumed_at"] = None
-                    save_pantry(st.session_state.pantry)
-                    st.rerun()
-
-                if st.button("❌", key=f"del_{item['id']}", help="永久刪除"):
-                    st.session_state.pantry.pop(original_index)
-                    save_pantry(st.session_state.pantry)
-                    st.rerun()
-
+            
+            with c3:
+                col_u, col_d = st.columns(2)
+                with col_u:
+                    if st.button("↩️", key=f"undo_{item['id']}", help="放回冰箱"):
+                        st.session_state.pantry[idx]['status'] = 'in_fridge'
+                        st.session_state.pantry[idx]['consumed_at'] = None
+                        save_pantry(st.session_state.pantry)
+                        st.rerun()
+                with col_d:
+                    if st.button("❌", key=f"del_{item['id']}", help="永久刪除"):
+                        st.session_state.pantry.pop(idx)
+                        save_pantry(st.session_state.pantry)
+                        st.rerun()
             st.divider()

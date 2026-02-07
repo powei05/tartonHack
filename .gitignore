@@ -1,4 +1,24 @@
-.DS_Store
+# Python 編譯檔
 __pycache__/
-*.pyc
-uploads/
+*.py[cod]
+
+# 虛擬環境 (看你用哪個名字)
+.venv/
+env/
+venv/
+.conda/
+
+# 環境變數與金鑰 (如果有用 .env 檔)
+.env
+
+# 作業系統產生的垃圾檔
+.DS_Store
+Thumbs.db
+
+# IDE 設定檔
+.vscode/
+.idea/
+
+# 用戶上傳的圖片 (通常不建議傳上大量測試圖，除非是範例)
+backend/uploads/*
+!backend/uploads/.gitkeep
