@@ -1,2 +1,9 @@
+streamlit
+requests
+pandas
+opencv-python-headless
+numpy
+pyzbar==0.1.9
+pillow
 Requests==2.32.5
 streamlit==1.54.0
