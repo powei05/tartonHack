@@ -1,12 +1,21 @@
+#  Fridge
+
+Fridge is a **computer vision + web application** that detects food items using a YOLO-based model and manages inventory through a FastAPI backend and a Streamlit frontend.
+
+---
+
+##  Project Structure
+
+```text
 TARTONHACK/
 ├── backend/                 # FastAPI backend
 │   ├── main.py              # API entry point
 │   ├── barcode_scanner.py   # Barcode scanning logic
-│   ├── requirements.txt
+│   └── requirements.txt
 │
 ├── frontend/                # Streamlit frontend
 │   ├── app.py               # UI entry point
-│   ├── fridge_icon.png
+│   └── fridge_icon.png
 │
 ├── model/                   # Computer vision & data
 │   ├── best.pt              # YOLO trained model
@@ -14,7 +23,7 @@ TARTONHACK/
 │   ├── detected_food.jpg    # Example output
 │   ├── inventory.json       # Inventory data
 │   ├── food/                # Sample images
-│   ├── requirements.txt
+│   └── requirements.txt
 │
 ├── utils/                   # Shared utilities
 │
@@ -22,6 +31,7 @@ TARTONHACK/
 ├── requirements.txt         # Pip dependencies (for reference / deployment)
 ├── README.md
 └── .gitignore
+
 
 **Create the conda environment**
 conda env create -f environment.yml
