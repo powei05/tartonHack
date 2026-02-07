@@ -21,4 +21,4 @@ Thumbs.db
 
 # 用戶上傳的圖片 (通常不建議傳上大量測試圖，除非是範例)
 backend/uploads/*
-!backend/uploads/.gitkeep
+!backend/uploads/.gitkeeppantry.json
