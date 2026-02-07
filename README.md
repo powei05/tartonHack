@@ -33,41 +33,41 @@ TARTONHACK/
 └── .gitignore
 
 
-**Create the conda environment**
+##Create the conda environment
+```bash
 conda env create -f environment.yml
 conda activate tarton
-
-- conda activate tarton
-If the environment already exists and environment.yml was updated:
 ```
+
+If the environment already exists and environment.yml was updated:
+```bash
 conda env update -f environment.yml --prune
 ```
 
-**Start the Backend**
+## Start the Backend
+```bash
 conda activate tarton
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
-:: If successful, you should see:
-:: Uvicorn running on http://127.0.0.1:8000
-
+```
+If successful, you should see:
+```text
+Uvicorn running on http://127.0.0.1:8000
+```
 You can test the API at:
-
+```text
 http://127.0.0.1:8000/docs
+```
 
+## Development Notes
 
-Development Notes
+### Python Version
+- Python 3.10
 
-- Python version: 3.10
-
-- Computer vision stack:
-
+### Computer Vision Stack
 - PyTorch
-
 - Ultralytics YOLO
-
 - OpenCV
 
-Web stack:
-
+### Web Stack
 - FastAPI + Uvicorn
-
 - Streamlit
