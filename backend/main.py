@@ -182,3 +182,110 @@ async def scan(image: UploadFile = File(...)):
             "detected_image_url": detected_image_url,
         }
     )
+## 185行到291行爲barcode辨識相關code BY Bonnie
+## scan_barcode , _infer_business_category_from_off和 barcode_lookup
+
+from barcode_scanner import decode_barcodes_from_bytes
+
+@app.post("/api/scan_barcode")
+async def scan_barcode(image: UploadFile = File(...)):
+    content = await image.read()
+    try:
+        results = decode_barcodes_from_bytes(content)
+        return {"barcodes": [{"type": r.type, "data": r.data} for r in results]}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+from typing import Optional
+from datetime import date, timedelta
+import uuid
+import requests
+from fastapi import HTTPException
+
+# 你原本應該就有 EXPIRY_RULES，沒有的話先加這個（或沿用你已有的）
+# EXPIRY_RULES = {"Meat": 21, "Vegetables": 14, "Cheese": 30, "Fruit": 7, "Eggs": 21, "Others": 5}
+
+def _infer_business_category_from_off(product: dict) -> str:
+    """
+    OpenFoodFacts -> 业务类别（与你 EXPIRY_RULES 对齐）
+    回传: Meat / Vegetables / Fruit / Eggs / Cheese / Others
+    """
+    name = (product.get("product_name") or product.get("product_name_en") or "").lower()
+    cats = product.get("categories_tags") or []
+    cats = [str(c).lower() for c in cats]
+
+    def has_any(keys):
+        return any(any(k in c for k in keys) for c in cats) or any(k in name for k in keys)
+
+    if has_any(["egg", "eggs"]):
+        return "Eggs"
+    if has_any(["cheese", "dairy", "milk", "yogurt", "butter", "cream"]):
+        return "Cheese"
+    if has_any(["meat", "beef", "pork", "chicken", "sausage", "ham", "bacon", "turkey", "hot-dogs", "hot dog"]):
+        return "Meat"
+    if has_any(["vegetable", "vegetables", "onion", "tomato", "carrot", "broccoli", "salad"]):
+        return "Vegetables"
+    if has_any(["fruit", "fruits", "apple", "banana", "orange", "berry", "grape"]):
+        return "Fruit"
+
+    return "Others"
+
+
+@app.get("/api/barcode/{code}")
+def barcode_lookup(code: str):
+    code = (code or "").strip()
+
+    # 你的條碼是 0855... 這種，前面 0 也算數，所以不要用 int
+    if not code.isdigit() or len(code) < 8:
+        raise HTTPException(status_code=400, detail="Invalid barcode. Expect digits with length >= 8.")
+
+    off_url = f"https://world.openfoodfacts.org/api/v2/product/{code}.json"
+
+    try:
+        r = requests.get(off_url, timeout=10)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"OpenFoodFacts request failed: {e}")
+
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"OpenFoodFacts bad status: {r.status_code}")
+
+    data = r.json()
+    product = data.get("product")
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found for this barcode.")
+
+    name = (
+        product.get("product_name")
+        or product.get("product_name_en")
+        or product.get("generic_name")
+        or "unknown"
+    ).strip()
+
+    image_url = (
+        product.get("image_url")
+        or product.get("image_front_url")
+        or product.get("selected_images", {}).get("front", {}).get("display", {}).get("en")
+        or None
+    )
+
+    category = _infer_business_category_from_off(product)
+    expiry_days = EXPIRY_RULES.get(category, EXPIRY_RULES.get("Others", 5))
+    today = date.today()
+    expire_date = today + timedelta(days=expiry_days)
+
+    item = {
+        "id": str(uuid.uuid4()),
+        "barcode": code,
+        "name": name,
+        "image": image_url,
+        "category": category,  # Meat/Fruit/Vegetables/Eggs/Cheese/Others
+        "added_at": today.strftime("%Y-%m-%d"),
+        "expire_at": expire_date.strftime("%Y-%m-%d"),
+        "status": "in_fridge",
+        "consumed_at": None,
+    }
+
+    return {"item": item}

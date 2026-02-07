@@ -131,7 +131,7 @@ with col_title:
 st.divider()
 
 # --- 分頁區塊 ---
-tab1, tab2 = st.tabs(["📸 拍照辨識 (AI)", "📝 手動/條碼輸入"])
+tab1, tab2, tab3 = st.tabs(["📸 拍照辨識 (AI)", "📝 手動輸入", "掃描/輸入條碼"])
 
 # [分頁 1] 拍照辨識
 with tab1:
@@ -181,6 +181,209 @@ with tab2:
                 st.session_state.pantry.append(new_item)
                 save_pantry(st.session_state.pantry)
                 st.rerun()
+
+with tab3:
+    st.caption("拍攝或上傳條碼照片，系統會自動讀取 Barcode 並查詢商品資訊")
+
+    # -------------------------
+    # helpers
+    # -------------------------
+    def scan_barcode_image_with_backend(uploaded_file):
+        """把條碼照片丟給後端 /api/scan_barcode 解碼"""
+        api_url = f"{BACKEND_URL}/api/scan_barcode"
+        files = {"image": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
+        try:
+            r = requests.post(api_url, files=files, timeout=20)
+            if r.status_code == 200:
+                return r.json().get("barcodes", [])
+            else:
+                st.error(f"條碼辨識失敗: {r.status_code} - {r.text}")
+                return []
+        except requests.exceptions.ConnectionError:
+            st.error("無法連線到後端！請確認後端正在執行。")
+            return []
+        except Exception as e:
+            st.error(f"發生未預期錯誤: {e}")
+            return []
+
+    def lookup_barcode_with_backend(barcode: str):
+        """用條碼去後端 /api/barcode/{code} 查 OpenFoodFacts，拿回 item"""
+        api_url = f"{BACKEND_URL}/api/barcode/{barcode}"
+        try:
+            r = requests.get(api_url, timeout=15)
+            if r.status_code == 200:
+                return r.json().get("item")
+            else:
+                st.error(f"條碼查詢失敗: {r.status_code} - {r.text}")
+                return None
+        except requests.exceptions.ConnectionError:
+            st.error("無法連線到後端！請確認後端正在執行。")
+            return None
+        except Exception as e:
+            st.error(f"發生未預期錯誤: {e}")
+            return None
+
+    # -------------------------
+    # session state
+    # -------------------------
+    if "barcode_candidates" not in st.session_state:
+        st.session_state.barcode_candidates = []  # list of decoded codes
+    if "barcode_selected" not in st.session_state:
+        st.session_state.barcode_selected = ""
+    if "barcode_item" not in st.session_state:
+        st.session_state.barcode_item = None
+
+    # -------------------------
+    # UI: input image
+    # -------------------------
+    st.markdown("### 1) 拍條碼 / 上傳條碼照片")
+
+    col_cam, col_up = st.columns(2)
+    with col_cam:
+        barcode_photo = st.camera_input("用相機拍條碼", label_visibility="collapsed")
+    with col_up:
+        barcode_upload = st.file_uploader("或上傳圖片", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+
+    img_file = barcode_photo or barcode_upload
+
+    if img_file:
+        st.image(img_file, use_container_width=True)
+
+        col_btn1, col_btn2 = st.columns([1, 2])
+        with col_btn1:
+            if st.button("🔎 辨識條碼", type="primary", use_container_width=True):
+                with st.spinner("正在辨識條碼..."):
+                    barcodes = scan_barcode_image_with_backend(img_file)
+
+                # 抽出 data
+                codes = [b.get("data") for b in barcodes if b.get("data")]
+                # 去重保序
+                seen = set()
+                uniq = []
+                for c in codes:
+                    if c not in seen:
+                        seen.add(c)
+                        uniq.append(c)
+
+                st.session_state.barcode_candidates = uniq
+                st.session_state.barcode_item = None
+                st.session_state.barcode_selected = uniq[0] if uniq else ""
+                if not uniq:
+                    st.warning("沒有讀到條碼。建議：靠近一點、避免反光、讓條碼水平清楚入鏡。")
+                st.rerun()
+
+    st.markdown("### 2) 選擇條碼 / 手動輸入")
+
+    # 如果辨識到多個條碼，讓使用者挑
+    if st.session_state.barcode_candidates:
+        st.session_state.barcode_selected = st.selectbox(
+            "辨識到的條碼（可選）",
+            st.session_state.barcode_candidates,
+            index=st.session_state.barcode_candidates.index(st.session_state.barcode_selected)
+            if st.session_state.barcode_selected in st.session_state.barcode_candidates
+            else 0
+        )
+
+    # 也允許手動輸入/修正
+    manual_code = st.text_input(
+        "條碼（可手動貼上/修正）",
+        value=st.session_state.barcode_selected or "",
+        placeholder="例如：0123456789012"
+    ).strip()
+
+    colq1, colq2 = st.columns([1, 2])
+    with colq1:
+        if st.button("🌐 查詢商品", use_container_width=True):
+            if not manual_code:
+                st.warning("請先輸入或辨識出條碼")
+            else:
+                with st.spinner("正在查詢商品資訊..."):
+                    item = lookup_barcode_with_backend(manual_code)
+                st.session_state.barcode_item = item
+                st.session_state.barcode_selected = manual_code
+                st.rerun()
+
+    # -------------------------
+    # UI: show item + add
+    # -------------------------
+    item = st.session_state.barcode_item
+    if item:
+        st.markdown("### 3) 確認資訊並加入冰箱")
+
+        # category 英文 -> 中文（對齊你的 UI）
+        raw_cat = str(item.get("category", "unknown")).lower()
+        display_cat = CATEGORY_MAP.get(raw_cat, "其他 📦")
+
+        # preview
+        cimg, cinfo = st.columns([1, 3])
+        with cimg:
+            if item.get("image"):
+                st.image(item["image"], use_container_width=True)
+            else:
+                st.markdown("<div style='font-size:40px;text-align:center;'>📦</div>", unsafe_allow_html=True)
+
+        with cinfo:
+            st.markdown(f"**{item.get('name', 'unknown')}**")
+            st.caption(f"Barcode: {item.get('barcode')}")
+            st.caption(f"分類：{display_cat}")
+            st.caption(f"建議到期日：{item.get('expire_at')}")
+
+        # allow overrides
+        st.markdown("#### 可選：調整後再加入")
+
+        colA, colB, colC = st.columns([2, 2, 1])
+        with colA:
+            cat_values = list(CATEGORY_MAP.values())
+            # default select to display_cat
+            default_idx = cat_values.index(display_cat) if display_cat in cat_values else 0
+            cat_override = st.selectbox("分類（可改）", cat_values, index=default_idx)
+
+        with colB:
+            try:
+                default_exp = datetime.strptime(item.get("expire_at"), "%Y-%m-%d").date()
+            except:
+                default_exp = datetime.now().date() + timedelta(days=7)
+            expire_override = st.date_input("到期日（可改）", value=default_exp)
+
+        with colC:
+            qty = st.number_input("數量", min_value=1, max_value=50, value=1, step=1)
+
+        col_add, col_clear = st.columns(2)
+        with col_add:
+            if st.button("➕ 加入冰箱", type="primary", use_container_width=True):
+                for _ in range(int(qty)):
+                    new_item = {
+                        "id": str(uuid.uuid4()),
+                        "barcode": item.get("barcode"),
+                        "name": item.get("name", "unknown"),
+                        "image": item.get("image"),
+                        "category": cat_override,  # 存中文（跟 tab2 一致）
+                        "added_at": datetime.now().strftime("%Y-%m-%d"),
+                        "expire_at": expire_override.strftime("%Y-%m-%d"),
+                        "status": "in_fridge",
+                        "consumed_at": None
+                    }
+                    st.session_state.pantry.append(new_item)
+
+                save_pantry(st.session_state.pantry)
+                st.success(f"成功加入 {int(qty)} 個！")
+
+                # reset
+                st.session_state.barcode_item = None
+                st.session_state.barcode_candidates = []
+                st.session_state.barcode_selected = ""
+                st.rerun()
+
+        with col_clear:
+            if st.button("🧹 清除結果", use_container_width=True):
+                st.session_state.barcode_item = None
+                st.session_state.barcode_candidates = []
+                st.session_state.barcode_selected = ""
+                st.rerun()
+
+    else:
+        st.info("流程：拍/上傳條碼 → 辨識條碼 → 查詢商品 → 加入冰箱")
+
 
 st.divider()
 

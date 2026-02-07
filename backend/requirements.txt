@@ -2,3 +2,5 @@ fastapi==0.128.4
 opencv_python==4.13.0.92
 starlette==0.52.1
 ultralytics==8.4.12
+pyzbar==0.1.9
+pillow
