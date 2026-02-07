@@ -1,6 +1,6 @@
 fastapi==0.128.4
 numpy==2.2.5
-opencv-python==4.13.0.92
+opencv-python-headless==4.13.0.92
 pillow==11.3.0
 python-multipart==0.0.22
 requests==2.32.5
