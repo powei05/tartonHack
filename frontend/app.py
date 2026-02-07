@@ -131,7 +131,7 @@ with col_title:
 st.divider()
 
 # --- 分頁區塊 ---
-tab1, tab2 = st.tabs(["📸 拍照辨識 (AI)", "📝 手動/條碼輸入"])
+tab1, tab2, tab3 = st.tabs(["📸 拍照辨識 (AI)", "📝 手動輸入", "Barcode輸入"])
 
 # [分頁 1] 拍照辨識
 with tab1:
@@ -157,29 +157,161 @@ with tab1:
                     else:
                         st.warning("模型沒有偵測到任何食物，請試著靠近一點拍攝。")
 
-# [分頁 2] 手動輸入 (保留原本功能)
+
+# [分頁 2] 手動輸入（升級版）
 with tab2:
-    st.caption("如果 AI 認不出來，也可以手動輸入")
-    
-    with st.form("manual_form"):
-        name_in = st.text_input("商品名稱", placeholder="例如：喝剩的牛奶")
+    st.caption("AI 認不出來也沒關係：手動輸入")
+
+    if "manual_preview" not in st.session_state:
+        st.session_state.manual_preview = None
+
+    with st.form("manual_form_v2"):
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            name_in = st.text_input("商品名稱", placeholder="例如：喝剩的牛奶")
+            image_in = st.text_input("圖片網址（可選）", placeholder="貼上圖片 URL（例如商品圖片）")
+
+        with col2:
+            qty = st.number_input("數量", min_value=1, max_value=50, value=1, step=1)
+
         cat_in = st.selectbox("分類", list(CATEGORY_MAP.values()))
         date_in = st.date_input("過期日", value=datetime.now().date() + timedelta(days=7))
-        
-        if st.form_submit_button("➕ 加入冰箱"):
-            if name_in:
+
+        # Preview（同一個 form 裡）
+        st.markdown("#### ✅ 預覽")
+        p1, p2 = st.columns([1, 3])
+        with p1:
+            if image_in.strip():
+                st.image(image_in.strip(), use_container_width=True)
+            else:
+                st.markdown("<div style='font-size:40px;text-align:center;'>📦</div>", unsafe_allow_html=True)
+
+        with p2:
+            st.markdown(f"**{name_in if name_in else '（尚未輸入名稱）'}**")
+            st.caption(f"{cat_in} • 到期：{date_in.strftime('%Y-%m-%d')} • 數量：{int(qty)}")
+
+        submitted = st.form_submit_button("➕ 加入冰箱")
+
+    if submitted:
+        if not name_in.strip():
+            st.warning("請先輸入商品名稱")
+        else:
+            for _ in range(int(qty)):
                 new_item = {
                     "id": str(uuid.uuid4()),
-                    "name": name_in,
-                    "image": None,
-                    "category": cat_in, # 直接存中文
+                    "barcode": None,
+                    "name": name_in.strip(),
+                    "image": image_in.strip() if image_in.strip() else None,
+                    "category": cat_in,  # 存中文（跟你的顯示/篩選一致）
                     "added_at": datetime.now().strftime("%Y-%m-%d"),
                     "expire_at": date_in.strftime("%Y-%m-%d"),
                     "status": "in_fridge",
                     "consumed_at": None
                 }
                 st.session_state.pantry.append(new_item)
+
+            save_pantry(st.session_state.pantry)
+            st.success(f"已加入 {int(qty)} 個項目！")
+            st.rerun()
+
+
+with tab3:
+    st.caption("輸入商品條碼（Barcode），自動查詢品名與分類後加入冰箱")
+
+    def lookup_barcode_with_backend(barcode: str):
+        api_url = f"{BACKEND_URL}/api/barcode/{barcode}"
+        try:
+            r = requests.get(api_url, timeout=15)
+            if r.status_code == 200:
+                return r.json().get("item")
+            else:
+                st.error(f"條碼查詢失敗: {r.status_code} - {r.text}")
+                return None
+        except requests.exceptions.ConnectionError:
+            st.error("無法連線到後端！請確認 `python backend.py` 是否正在執行。")
+            return None
+        except Exception as e:
+            st.error(f"發生未預期的錯誤: {e}")
+            return None
+
+    # 用 session_state 暫存查詢結果，避免 rerun 後消失
+    if "barcode_item" not in st.session_state:
+        st.session_state.barcode_item = None
+
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        barcode_in = st.text_input("Barcode", placeholder="例如：0123456789012", label_visibility="visible")
+    with col_b:
+        qty = st.number_input("數量", min_value=1, max_value=50, value=1, step=1)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔍 查詢條碼", use_container_width=True):
+            if barcode_in.strip():
+                item = lookup_barcode_with_backend(barcode_in.strip())
+                st.session_state.barcode_item = item
+            else:
+                st.warning("請先輸入條碼")
+
+    item = st.session_state.barcode_item
+
+    if item:
+        # --- 前端資料清洗（沿用 tab1 的邏輯）---
+        # 1) category 英文 -> 中文
+        raw_cat = str(item.get("category", "unknown")).lower()
+        item_display_cat = CATEGORY_MAP.get(raw_cat, "其他 📦")
+
+        # 2) 顯示預覽
+        st.markdown("### ✅ 查詢結果")
+        cimg, cinfo = st.columns([1, 3])
+        with cimg:
+            if item.get("image"):
+                st.image(item["image"], use_container_width=True)
+            else:
+                st.markdown("<div style='font-size:40px;text-align:center;'>📦</div>", unsafe_allow_html=True)
+
+        with cinfo:
+            st.markdown(f"**{item.get('name', 'unknown')}**")
+            st.caption(f"分類：{item_display_cat}")
+            st.caption(f"建議到期日：{item.get('expire_at')}")
+
+        # 3) 讓使用者可調整分類/到期日（很實用，因為 OFF 分類不一定準）
+        st.markdown("### ✍️ 可選：調整資訊再加入")
+        edit_col1, edit_col2 = st.columns(2)
+        with edit_col1:
+            cat_override = st.selectbox("分類（可改）", list(CATEGORY_MAP.values()),
+                                        index=list(CATEGORY_MAP.values()).index(item_display_cat) if item_display_cat in CATEGORY_MAP.values() else 0)
+        with edit_col2:
+            # 預設用後端給的 expire_at
+            try:
+                default_exp = datetime.strptime(item.get("expire_at"), "%Y-%m-%d").date()
+            except:
+                default_exp = datetime.now().date() + timedelta(days=7)
+            expire_override = st.date_input("到期日（可改）", value=default_exp)
+
+        with col2:
+            if st.button("➕ 加入冰箱", type="primary", use_container_width=True):
+                # 建立 qty 份 item（與 tab2 schema 對齊）
+                for _ in range(int(qty)):
+                    new_item = {
+                        "id": str(uuid.uuid4()),
+                        "barcode": item.get("barcode"),
+                        "name": item.get("name", "unknown"),
+                        "image": item.get("image"),  # 外部 URL 直接存
+                        "category": cat_override,      # 存中文（跟 tab2 一致）
+                        "added_at": datetime.now().strftime("%Y-%m-%d"),
+                        "expire_at": expire_override.strftime("%Y-%m-%d"),
+                        "status": "in_fridge",
+                        "consumed_at": None
+                    }
+
+                    st.session_state.pantry.append(new_item)
+
                 save_pantry(st.session_state.pantry)
+                st.success(f"已加入 {int(qty)} 個項目！")
+                # 清掉暫存避免誤加
+                st.session_state.barcode_item = None
                 st.rerun()
 
 st.divider()
