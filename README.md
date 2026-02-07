@@ -82,3 +82,6 @@ Streamlit will automatically open in your browser (default: http://localhost:850
 ### Web Stack
 - FastAPI + Uvicorn
 - Streamlit
+
+## License
+This project is licensed under the MIT License.
