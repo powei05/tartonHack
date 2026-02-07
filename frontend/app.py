@@ -51,7 +51,7 @@ def scan_image_with_backend(uploaded_file):
     }
     
     try:
-        response = requests.post(api_url, files=files, timeout=30)
+        response = requests.post(api_url, files=files, timeout=120)
         
         if response.status_code == 200:
             result = response.json()
