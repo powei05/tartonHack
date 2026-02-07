@@ -1,23 +1,56 @@
 [
     {
-        "id": "fbb81c53-05e7-4b9e-afdf-ac2711b562b6",
-        "barcode": "5449000000996",
-        "name": "Coke Original Taste",
-        "image": "https://images.openfoodfacts.org/images/products/544/900/000/0996/front_en.1002.200.jpg",
-        "category": "\u98f2\u6599 \ud83e\udd64",
-        "added_at": "2026-02-06",
-        "expire_at": "2026-02-13",
-        "status": "in_fridge",
-        "consumed_at": null
+        "id": "14744ebc-4231-429c-8201-1bc905d22f5a",
+        "barcode": "3017620422003",
+        "name": "Nutella",
+        "image": "https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.633.200.jpg",
+        "category": "一般食品 📦",
+        "added_at": "2026-02-07",
+        "expire_at": "2026-02-14",
+        "status": "consumed",
+        "consumed_at": "2026-02-07"
     },
     {
-        "id": "50852273-70a2-469d-b485-0e4410454f2e",
-        "barcode": "MANUAL",
-        "name": "\u6ef7\u8089",
-        "image": null,
-        "category": "\u719f\u98df \ud83c\udf72",
-        "added_at": "2026-02-06",
-        "expire_at": "2026-02-07",
+        "id": "5a2a9397-9e5c-4fae-a351-f5fbb0657932",
+        "barcode": "3017620422003",
+        "name": "Nutella",
+        "image": "https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.633.200.jpg",
+        "category": "一般食品 📦",
+        "added_at": "2026-02-07",
+        "expire_at": "2026-02-14",
+        "status": "consumed",
+        "consumed_at": "2026-02-07"
+    },
+    {
+        "id": "fc969248-264b-45f8-8c78-b5ec37e11550",
+        "barcode": "3017620422003",
+        "name": "Nutella",
+        "image": "https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.633.200.jpg",
+        "category": "一般食品 📦",
+        "added_at": "2026-02-07",
+        "expire_at": "2026-02-14",
+        "status": "consumed",
+        "consumed_at": "2026-02-07"
+    },
+    {
+        "id": "bdf02c01-dd51-435e-83ed-a46ef3029c4b",
+        "barcode": "3017620422003",
+        "name": "Nutella",
+        "image": "https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.633.200.jpg",
+        "category": "一般食品 📦",
+        "added_at": "2026-02-07",
+        "expire_at": "2026-02-14",
+        "status": "consumed",
+        "consumed_at": "2026-02-07"
+    },
+    {
+        "id": "da19cc90-a6e0-4f98-9d7f-5b3d9e174b7c",
+        "barcode": "0855088005467",
+        "name": "Whole Milk",
+        "image": "https://images.openfoodfacts.org/images/products/085/508/800/5467/front_en.35.400.jpg",
+        "category": "乳製品 🥛",
+        "added_at": "2026-02-07",
+        "expire_at": "2026-03-09",
         "status": "in_fridge",
         "consumed_at": null
     }
