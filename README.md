@@ -62,7 +62,7 @@ http://127.0.0.1:8000/docs
 conda activate tarton
 streamlit run frontend/app.py
 ```
-```text```
+```text
 Streamlit will automatically open in your browser (default: http://localhost:8501
 ).
 ```
